@@ -36,6 +36,7 @@ export class SiftController {
   private rescanTimer?: ReturnType<typeof setTimeout>;
   private panel?: VerifyPanel;
   private activeVerifyHash?: string;
+  private activeVerifySurface?: Surface;
   private started = false;
 
   async start(): Promise<void> {
@@ -72,9 +73,13 @@ export class SiftController {
 
   private listenForProgress(): void {
     browser.runtime.onMessage.addListener((message: Message) => {
-      if (message.type === 'VERIFY_PROGRESS' && message.answerHash === this.activeVerifyHash && this.panel) {
-        const surface = this.findSurfaceForActiveVerify();
-        if (surface) this.panel.showProgress(surface, message.stage, message.detail);
+      if (
+        message.type === 'VERIFY_PROGRESS' &&
+        message.answerHash === this.activeVerifyHash &&
+        this.panel &&
+        this.activeVerifySurface
+      ) {
+        this.panel.showProgress(this.activeVerifySurface, message.stage, message.detail);
       }
     });
   }
@@ -217,19 +222,13 @@ export class SiftController {
 
   // --- verify flow ---------------------------------------------------------
 
-  private findSurfaceForActiveVerify(): Surface | undefined {
-    for (const state of this.states.values()) {
-      if (state.surface.type === 'answer') return state.surface;
-    }
-    return undefined;
-  }
-
   private async verifyElement(el: Element, surface: Surface): Promise<void> {
     const answerText = extractAnswerText(surface, el);
     if (!answerText) return;
     const citations = findCitations(surface, el);
     const hash = answerHash(answerText, surface.id);
     this.activeVerifyHash = hash;
+    this.activeVerifySurface = surface;
 
     if (!this.panel) this.panel = new VerifyPanel();
     this.panel.showProgress(surface, 'extracting');
