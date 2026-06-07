@@ -90,6 +90,8 @@ export function findCitations(surface: Surface, container: Element): ExtractedCi
 /** Resolve/clean a citation href; reject non-http and in-page anchors. */
 export function normalizeCitationUrl(href: string): string | null {
   if (!href) return null;
+  // Same-document anchors (#section) are navigation, not citations.
+  if (href.trim().startsWith('#')) return null;
   try {
     const url = new URL(href, location.href);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;

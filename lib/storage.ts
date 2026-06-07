@@ -7,29 +7,17 @@
  */
 
 import { browser } from './browser';
-import {
-  DEFAULT_SETTINGS,
-  STORAGE_KEYS,
-  SCHEMA_VERSION,
-  VERIFY_CACHE_MAX,
-} from './config';
+import { DEFAULT_SETTINGS, STORAGE_KEYS, VERIFY_CACHE_MAX } from './config';
+import { withDefaults, resolveLevel, normalizeHostname } from './settings';
 import type { Settings, Level, VerifyResult } from './types';
+
+// Re-export the pure helpers so existing import sites (`@/lib/storage`) keep working.
+export { withDefaults, resolveLevel, normalizeHostname } from './settings';
+export type { EffectiveLevel } from './settings';
 
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
-
-/** Deep-ish merge of stored settings over defaults, tolerant of partial/legacy shapes. */
-function withDefaults(stored: Partial<Settings> | undefined): Settings {
-  if (!stored) return structuredClone(DEFAULT_SETTINGS);
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    globalLevel: stored.globalLevel ?? DEFAULT_SETTINGS.globalLevel,
-    siteOverrides: { ...DEFAULT_SETTINGS.siteOverrides, ...(stored.siteOverrides ?? {}) },
-    verify: { ...DEFAULT_SETTINGS.verify, ...(stored.verify ?? {}) },
-    ui: { ...DEFAULT_SETTINGS.ui, ...(stored.ui ?? {}) },
-  };
-}
 
 export async function getSettings(): Promise<Settings> {
   const raw = await browser.storage.local.get(STORAGE_KEYS.settings);
@@ -54,32 +42,8 @@ export async function updateSettings(
 // Effective level resolution (per-site override beats global default)
 // ---------------------------------------------------------------------------
 
-export interface EffectiveLevel {
-  level: Level;
-  source: 'override' | 'global';
-}
-
-export function resolveLevel(settings: Settings, hostname: string): EffectiveLevel {
-  const host = normalizeHostname(hostname);
-  const override = settings.siteOverrides[host];
-  if (override) return { level: override, source: 'override' };
-  return { level: settings.globalLevel, source: 'global' };
-}
-
-export async function getEffectiveLevel(hostname: string): Promise<EffectiveLevel> {
+export async function getEffectiveLevel(hostname: string) {
   return resolveLevel(await getSettings(), hostname);
-}
-
-/** Strip protocol, port, leading www., and lowercase. Tolerant of full URLs. */
-export function normalizeHostname(input: string): string {
-  let host = input.trim().toLowerCase();
-  try {
-    if (host.includes('://')) host = new URL(host).hostname;
-  } catch {
-    /* fall through, treat as bare host */
-  }
-  host = host.replace(/^www\./, '').replace(/:\d+$/, '');
-  return host;
 }
 
 export async function setGlobalLevel(level: Level): Promise<Settings> {
