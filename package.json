@@ -1,0 +1,41 @@
+{
+  "name": "sift",
+  "displayName": "Sift",
+  "description": "Tag, verify, or block AI features on the pages you visit. Verify checks whether an AI answer's claims are actually backed by its sources.",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "homepage": "https://github.com/Jeremiah-Sakuda/sift",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jeremiah-Sakuda/sift.git"
+  },
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "compile": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "icons": "node scripts/gen-icons.mjs",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@wxt-dev/module-react": "^1.1.5",
+    "happy-dom": "^15.11.7",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8",
+    "wxt": "^0.20.26"
+  }
+}

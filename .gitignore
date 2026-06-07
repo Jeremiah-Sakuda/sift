@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# WXT build output & generated types
+.wxt/
+.output/
+stats.html
+stats-*.json
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Test / coverage
+coverage/
