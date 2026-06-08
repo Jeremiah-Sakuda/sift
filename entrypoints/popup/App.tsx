@@ -28,29 +28,23 @@ export function App() {
     );
   }
 
-  if (host === null) {
-    return (
-      <div className="popup">
-        <Header onOptions={() => browser.runtime.openOptionsPage()} />
-        <p className="empty">Sift only runs on web pages (http/https).</p>
-      </div>
-    );
-  }
-
-  const effective = resolveLevel(settings, host);
-  const isOverride = effective.source === 'override';
+  const effective = host ? resolveLevel(settings, host) : null;
+  const isOverride = effective?.source === 'override';
   const hasKey = !!settings.verify.apiKey;
-  const verifyChosen = effective.level === 'verify' || settings.globalLevel === 'verify';
+  const verifyChosen = effective?.level === 'verify' || settings.globalLevel === 'verify';
 
-  const setSiteLevel = (level: Level) =>
-    update((s) => ({ ...s, siteOverrides: { ...s.siteOverrides, [host]: level } }));
+  const setSiteLevel = (level: Level) => {
+    if (host) void update((s) => ({ ...s, siteOverrides: { ...s.siteOverrides, [host]: level } }));
+  };
 
-  const resetSite = () =>
-    update((s) => {
+  const resetSite = () => {
+    if (!host) return;
+    void update((s) => {
       const siteOverrides = { ...s.siteOverrides };
       delete siteOverrides[host];
       return { ...s, siteOverrides };
     });
+  };
 
   const setGlobal = (level: Level) => update((s) => ({ ...s, globalLevel: level }));
 
@@ -58,27 +52,34 @@ export function App() {
     <div className="popup">
       <Header onOptions={() => browser.runtime.openOptionsPage()} />
 
-      <div>
-        <div className="row spread" style={{ marginBottom: 8 }}>
-          <div className="section-label" style={{ margin: 0 }}>
-            On this site
+      {host && effective ? (
+        <div>
+          <div className="row spread" style={{ marginBottom: 8 }}>
+            <div className="section-label" style={{ margin: 0 }}>
+              On this site
+            </div>
+            <div className="site">
+              <span className="host">{host}</span>
+            </div>
           </div>
-          <div className="site">
-            <span className="host">{host}</span>
+          <LevelSelector value={effective.level} onChange={setSiteLevel} />
+          <div className="row spread small" style={{ marginTop: 6 }}>
+            <span className="muted">
+              {isOverride ? 'Custom setting for this site' : 'Following your default'}
+            </span>
+            {isOverride && (
+              <button className="btn ghost small" onClick={resetSite}>
+                Reset to default
+              </button>
+            )}
           </div>
         </div>
-        <LevelSelector value={effective.level} onChange={setSiteLevel} />
-        <div className="row spread small" style={{ marginTop: 6 }}>
-          <span className="muted">
-            {isOverride ? 'Custom setting for this site' : 'Following your default'}
-          </span>
-          {isOverride && (
-            <button className="btn ghost small" onClick={resetSite}>
-              Reset to default
-            </button>
-          )}
-        </div>
-      </div>
+      ) : (
+        <p className="empty" style={{ padding: '4px 2px' }}>
+          This isn't a web page, so there's nothing to sift here. Set your default below — it
+          applies to every http(s) site.
+        </p>
+      )}
 
       {verifyChosen && !hasKey && (
         <div className="hint warn">
@@ -92,8 +93,8 @@ export function App() {
       <div className="divider" />
 
       <div>
-        <div className="section-label">Default for new sites</div>
-        <LevelSelector size="sm" value={settings.globalLevel} onChange={setGlobal} />
+        <div className="section-label">{host ? 'Default for new sites' : 'Default for all sites'}</div>
+        <LevelSelector size={host ? 'sm' : 'lg'} value={settings.globalLevel} onChange={setGlobal} />
       </div>
 
       <footer>
