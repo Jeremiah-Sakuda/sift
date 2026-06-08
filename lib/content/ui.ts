@@ -261,9 +261,11 @@ function citationLi(c: { url: string; title?: string; status: string }): string 
   const stClass =
     c.status === 'ok' ? 'st-ok' : c.status === 'dead' ? 'st-dead' : c.status === 'unreachable' ? 'st-unreachable' : 'st-unchecked';
   const label = c.status === 'dead' ? '404' : c.status === 'ok' ? 'ok' : c.status;
-  return `<li><span class="st ${stClass}">${escapeHtml(label)}</span><a href="${escapeAttr(
-    c.url,
-  )}" target="_blank" rel="noreferrer noopener">${escapeHtml(c.title || c.url)}</a></li>`;
+  // Defense in depth: only ever emit an http(s) href, never javascript:/data:.
+  const safeHref = /^https?:\/\//i.test(c.url) ? escapeAttr(c.url) : '#';
+  return `<li><span class="st ${stClass}">${escapeHtml(label)}</span><a href="${safeHref}" target="_blank" rel="noreferrer noopener">${escapeHtml(
+    c.title || c.url,
+  )}</a></li>`;
 }
 
 function supportColor(support: string): string {

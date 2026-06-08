@@ -63,11 +63,10 @@ export class SiftController {
       const next = changes['sift:settings'].newValue as Settings | undefined;
       if (!next) return;
       this.settings = next;
-      const newLevel = resolveLevel(next, location.hostname).level;
-      if (newLevel !== this.level) {
-        this.level = newLevel;
-        this.reconcile();
-      }
+      // Re-apply on any settings change — not just level — so appearance toggles
+      // (show badges / outline) and per-site edits take effect live.
+      this.level = resolveLevel(next, location.hostname).level;
+      this.reconcile();
     });
   }
 
@@ -148,11 +147,12 @@ export class SiftController {
   private tag(el: Element, state: ElementState, showVerify: boolean): void {
     el.setAttribute(SURFACE_ATTR, state.surface.id);
     if (this.settings.ui.showOutline) el.setAttribute(TAGGED_ATTR, '');
+    else el.removeAttribute(TAGGED_ATTR);
 
-    // Rebuild the badge if its verify affordance no longer matches the level.
+    // Drop the badge if appearance turned it off or its verify affordance changed.
     const needsBadge = this.settings.ui.showBadges;
     const badgeHasVerify = !!state.badge?.querySelector('button[title^="Check whether"]');
-    if (state.badge && badgeHasVerify !== showVerify) {
+    if (state.badge && (!needsBadge || badgeHasVerify !== showVerify)) {
       state.badge.remove();
       state.badge = undefined;
     }
