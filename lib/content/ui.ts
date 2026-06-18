@@ -27,8 +27,7 @@ const VERDICT_COLOR: Record<VerifyVerdict, string> = {
 const STAGE_LABEL: Record<VerifyStage, string> = {
   idle: 'Ready',
   extracting: 'Extracting claims…',
-  checking_links: 'Checking links…',
-  fetching_sources: 'Fetching sources…',
+  fetching_sources: 'Fetching & checking sources…',
   judging: 'Checking support…',
   done: 'Done',
   error: 'Error',

@@ -199,7 +199,6 @@ export const VERDICT_LABELS: Record<VerifyVerdict, string> = {
 export type VerifyStage =
   | 'idle'
   | 'extracting'
-  | 'checking_links'
   | 'fetching_sources'
   | 'judging'
   | 'done'

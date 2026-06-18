@@ -31,8 +31,10 @@ explicitly trigger by clicking the Verify button:
    This call goes directly from your browser to `api.anthropic.com` — there is no Sift
    proxy or server in between.
 
-Sift does not store the fetched source text; it is used only for the duration of the
-check and then discarded. Only the resulting verdict is cached locally.
+To be precise about egress: the fetched source text **is sent to your model** (step 2
+above) for the support check. Sift does not *store* it — after that call it is discarded,
+and only the resulting verdict is cached locally. If you don't want source text leaving
+your machine at all, set the Verify provider to a local server (see Options → Verify).
 
 ## Your API key
 
