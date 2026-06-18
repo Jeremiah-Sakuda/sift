@@ -109,11 +109,32 @@ export function htmlToText(html: string): string {
   out = out.replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, ' ');
   out = out.replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, ' ');
   out = out.replace(/<!--[\s\S]*?-->/g, ' ');
+  // Drop obvious page chrome so the model judges the article, not the nav/footer.
+  out = out.replace(/<(nav|footer|aside|form)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
+  // Focus on the main content region when the page marks one.
+  out = isolateMainContent(out);
   // Preserve paragraph-ish breaks before stripping tags.
   out = out.replace(BLOCK_TAGS, '\n');
   out = out.replace(/<[^>]+>/g, ' ');
   out = decodeEntities(out);
   return collapse(out);
+}
+
+/**
+ * Readability-lite: if the page marks its main content (<main> or <article>),
+ * return just that so boilerplate doesn't crowd out the article within the
+ * character budget. Heuristic and regex-based (no DOMParser in the worker).
+ */
+export function isolateMainContent(html: string): string {
+  const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
+  if (main && main[1].trim().length > 200) return main[1];
+
+  const articles = [...html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi)].map((m) => m[1]);
+  if (articles.length) {
+    const longest = articles.reduce((a, b) => (b.length > a.length ? b : a));
+    if (longest.trim().length > 200) return longest;
+  }
+  return html;
 }
 
 function deriveTitle(html: string): string | undefined {
