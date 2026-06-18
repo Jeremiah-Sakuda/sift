@@ -99,12 +99,18 @@ export interface SelectorList {
 // Settings (persisted in chrome.storage.local)
 // ---------------------------------------------------------------------------
 
-export type VerifyProvider = 'anthropic';
+export type VerifyProvider = 'anthropic' | 'openai-compatible';
 
 export interface VerifySettings {
   provider: VerifyProvider;
   /** Bring-your-own API key. Stored in chrome.storage.local, never leaves device except the verify call. */
   apiKey: string;
+  /**
+   * Endpoint base override. Empty = the provider default. Lets a privacy-minded
+   * user point Verify at a local / self-hosted OpenAI-compatible server (Ollama,
+   * llama.cpp, LiteLLM) so page + source text never reaches a commercial cloud.
+   */
+  baseUrl: string;
   /** Model id used for claim extraction + entailment. */
   model: string;
   /** Cap on how many cited sources are fetched per verification (cost control). */

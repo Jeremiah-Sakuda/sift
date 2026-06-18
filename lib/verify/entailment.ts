@@ -44,12 +44,14 @@ export function defangSource(text: string): string {
 export async function judgeClaim(params: {
   apiKey: string;
   model: string;
+  provider?: import('../types').VerifyProvider;
+  baseUrl?: string;
   claim: Claim;
   sources: SourceText[];
   signal?: AbortSignal;
   usageSink?: (usage: { inputTokens: number; outputTokens: number }) => void;
 }): Promise<ClaimAssessment> {
-  const { apiKey, model, claim, sources, signal, usageSink } = params;
+  const { apiKey, model, provider, baseUrl, claim, sources, signal, usageSink } = params;
 
   // No usable source text — do not spend an LLM call; report honestly.
   if (sources.length === 0) {
@@ -85,6 +87,8 @@ export async function judgeClaim(params: {
   const raw = await callStructured<{ support: ClaimSupport; rationale: string }>({
     apiKey,
     model,
+    provider,
+    baseUrl,
     system: SYSTEM,
     prompt,
     maxTokens: 512,

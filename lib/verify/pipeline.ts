@@ -43,7 +43,7 @@ export async function runVerify(
     createdAt: new Date().toISOString(),
   };
 
-  if (!settings.apiKey) {
+  if (settings.provider === 'anthropic' && !settings.apiKey) {
     return {
       ...base,
       verdict: 'error',
@@ -70,6 +70,8 @@ export async function runVerify(
     const extractP = extractClaims({
       apiKey: settings.apiKey,
       model: settings.model,
+      provider: settings.provider,
+      baseUrl: settings.baseUrl,
       answerText: request.answerText,
       citations: inputCitations,
       signal,
@@ -97,7 +99,16 @@ export async function runVerify(
           title: f.citation.title,
           text: f.text!,
         }));
-      return judgeClaim({ apiKey: settings.apiKey, model: settings.model, claim, sources, signal, usageSink });
+      return judgeClaim({
+        apiKey: settings.apiKey,
+        model: settings.model,
+        provider: settings.provider,
+        baseUrl: settings.baseUrl,
+        claim,
+        sources,
+        signal,
+        usageSink,
+      });
     });
 
     // Step 4: aggregate.

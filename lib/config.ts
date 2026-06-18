@@ -66,6 +66,7 @@ export const DEFAULT_SETTINGS: Settings = {
   verify: {
     provider: 'anthropic',
     apiKey: '',
+    baseUrl: '',
     model: DEFAULT_ANTHROPIC_MODEL,
     maxSourcesPerCheck: DEFAULT_MAX_SOURCES,
     fetchTimeoutMs: DEFAULT_FETCH_TIMEOUT_MS,

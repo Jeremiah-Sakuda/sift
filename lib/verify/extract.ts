@@ -30,12 +30,14 @@ const SYSTEM = [
 export async function extractClaims(params: {
   apiKey: string;
   model: string;
+  provider?: import('../types').VerifyProvider;
+  baseUrl?: string;
   answerText: string;
   citations: ExtractedCitation[];
   signal?: AbortSignal;
   usageSink?: (usage: { inputTokens: number; outputTokens: number }) => void;
 }): Promise<Claim[]> {
-  const { apiKey, model, answerText, citations, signal, usageSink } = params;
+  const { apiKey, model, provider, baseUrl, answerText, citations, signal, usageSink } = params;
 
   const numbered = citations.length
     ? citations.map((c, i) => `[${i + 1}] ${c.url}${c.title ? ` — ${c.title}` : ''}`).join('\n')
@@ -56,6 +58,8 @@ export async function extractClaims(params: {
   const raw = await callStructured<RawExtraction>({
     apiKey,
     model,
+    provider,
+    baseUrl,
     system: SYSTEM,
     prompt,
     maxTokens: 2048,

@@ -101,12 +101,14 @@ function VerifyCard({ settings, update }: Props) {
   const setVerify = (patch: Partial<Settings['verify']>) =>
     update((s) => ({ ...s, verify: { ...s.verify, ...patch } }));
 
+  const isLocal = v.provider === 'openai-compatible';
+
   const test = async () => {
     setKeyState('testing');
     setKeyMsg('');
-    const r = await testApiKey(v.apiKey, v.model);
+    const r = await testApiKey({ provider: v.provider, apiKey: v.apiKey, model: v.model, baseUrl: v.baseUrl });
     setKeyState(r.ok ? 'ok' : 'err');
-    setKeyMsg(r.ok ? 'Key works.' : r.error ?? 'Failed.');
+    setKeyMsg(r.ok ? 'Connected.' : r.error ?? 'Failed.');
   };
 
   const enableFetch = async () => {
@@ -121,15 +123,57 @@ function VerifyCard({ settings, update }: Props) {
   return (
     <Card
       title="Verify"
-      desc="Verify checks whether an AI answer's claims are actually backed by the sources it cites — using your own Anthropic API key. Nothing leaves your device except the source fetches and the model call you trigger."
+      desc="Verify checks whether an AI answer's claims are actually backed by the sources it cites — using your own model. Anthropic by default, or point it at a local / OpenAI-compatible server so nothing leaves your machine. Only the source fetches and the model call you trigger ever leave the device."
     >
       <div className="field">
-        <label htmlFor="apikey">Anthropic API key</label>
+        <label htmlFor="provider">Provider</label>
+        <select
+          id="provider"
+          value={v.provider}
+          onChange={(e) => {
+            setKeyState('idle');
+            void setVerify({ provider: e.target.value as Settings['verify']['provider'] });
+          }}
+        >
+          <option value="anthropic">Anthropic (cloud)</option>
+          <option value="openai-compatible">Local / OpenAI-compatible server</option>
+        </select>
+        <span className="help">
+          {isLocal
+            ? 'Routes Verify to any OpenAI Chat Completions endpoint (Ollama, llama.cpp, LiteLLM). Page and source text stay on the machine you point to.'
+            : 'Calls the Anthropic Messages API directly from your browser with your key.'}
+        </span>
+      </div>
+
+      {isLocal && (
+        <div className="field">
+          <label htmlFor="baseurl">Server URL</label>
+          <input
+            id="baseurl"
+            type="text"
+            placeholder="http://localhost:11434"
+            value={v.baseUrl}
+            spellCheck={false}
+            autoComplete="off"
+            onChange={(e) => {
+              setKeyState('idle');
+              void setVerify({ baseUrl: e.target.value.trim() });
+            }}
+          />
+          <span className="help">
+            Base URL of the server; Sift appends <code>/v1/chat/completions</code>. The server must
+            allow the extension's origin (CORS) and support tool/function calling.
+          </span>
+        </div>
+      )}
+
+      <div className="field">
+        <label htmlFor="apikey">{isLocal ? 'API key (optional)' : 'Anthropic API key'}</label>
         <div className="row">
           <input
             id="apikey"
             type={showKey ? 'text' : 'password'}
-            placeholder="sk-ant-…"
+            placeholder={isLocal ? 'usually blank for local servers' : 'sk-ant-…'}
             value={v.apiKey}
             spellCheck={false}
             autoComplete="off"
@@ -141,15 +185,21 @@ function VerifyCard({ settings, update }: Props) {
           <button className="btn" onClick={() => setShowKey((s) => !s)} type="button">
             {showKey ? 'Hide' : 'Show'}
           </button>
-          <button className="btn primary" onClick={test} disabled={!v.apiKey || keyState === 'testing'}>
+          <button
+            className="btn primary"
+            onClick={test}
+            disabled={keyState === 'testing' || (!isLocal && !v.apiKey) || (isLocal && !v.baseUrl)}
+          >
             {keyState === 'testing' ? 'Testing…' : 'Test'}
           </button>
         </div>
         <span className="help">
           Stored only in this browser (chrome.storage.local).{' '}
-          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
-            Get a key →
-          </a>
+          {!isLocal && (
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
+              Get a key →
+            </a>
+          )}
         </span>
         {keyState === 'ok' && <div className="hint ok">{keyMsg}</div>}
         {keyState === 'err' && <div className="hint warn">{keyMsg}</div>}
