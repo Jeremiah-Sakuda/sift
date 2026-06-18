@@ -36,9 +36,19 @@ function isPrivateIPv6(host: string): boolean {
   if (h === '::1' || h === '::') return true; // loopback / unspecified
   if (/^f[cd]/.test(h)) return true; // fc00::/7 unique-local
   if (/^fe[89ab]/.test(h)) return true; // fe80::/10 link-local
-  // IPv4-mapped/embedded (e.g. ::ffff:169.254.169.254)
-  const v4 = h.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
-  if (v4 && isPrivateIPv4(v4[1])) return true;
+  // IPv4-mapped, dotted form (e.g. ::ffff:169.254.169.254).
+  const dotted = h.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+  if (dotted && isPrivateIPv4(dotted[1])) return true;
+  // IPv4-mapped, HEX form — what the WHATWG URL parser actually produces for a
+  // bracketed literal (e.g. [::ffff:169.254.169.254] => ::ffff:a9fe:a9fe). Decode
+  // the trailing two hextets to an IPv4 and re-check. (This was a real bypass.)
+  const hex = h.match(/::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hex) {
+    const hi = parseInt(hex[1], 16);
+    const lo = parseInt(hex[2], 16);
+    const v4 = `${(hi >> 8) & 255}.${hi & 255}.${(lo >> 8) & 255}.${lo & 255}`;
+    if (isPrivateIPv4(v4)) return true;
+  }
   return false;
 }
 

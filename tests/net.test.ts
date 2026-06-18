@@ -15,6 +15,22 @@ describe('isBlockedHost', () => {
     expect(isBlockedHost('fe80::1')).toBe(true);
   });
 
+  it('blocks IPv4-mapped IPv6 in both dotted and hex (URL-parser) forms', () => {
+    expect(isBlockedHost('::ffff:169.254.169.254')).toBe(true);
+    expect(isBlockedHost('[::ffff:169.254.169.254]')).toBe(true);
+    // The forms the WHATWG URL parser actually yields:
+    expect(isBlockedHost('::ffff:a9fe:a9fe')).toBe(true); // 169.254.169.254
+    expect(isBlockedHost('::ffff:7f00:1')).toBe(true); // 127.0.0.1
+    expect(isBlockedHost('::ffff:a00:1')).toBe(true); // 10.0.0.1
+    // A mapped *public* IPv4 stays allowed (8.8.8.8 => ::ffff:808:808).
+    expect(isBlockedHost('::ffff:808:808')).toBe(false);
+  });
+
+  it('blocks the metadata endpoint through a real parsed URL (regression)', () => {
+    expect(isPublicHttpUrl(new URL('http://[::ffff:169.254.169.254]/latest/meta-data'))).toBe(false);
+    expect(isPublicHttpUrl(new URL('http://[::ffff:127.0.0.1]/'))).toBe(false);
+  });
+
   it('blocks RFC-1918 private ranges', () => {
     expect(isBlockedHost('10.0.0.1')).toBe(true);
     expect(isBlockedHost('172.16.0.1')).toBe(true);
