@@ -32,11 +32,26 @@ const SYSTEM = [
   'rules are authoritative.',
 ].join('\n');
 
-/** Neutralize the most blatant injection lines before the model sees them. */
+/**
+ * Best-effort defang of blatant injection lines. This is DEFENSE IN DEPTH only —
+ * the real protection is the untrusted-source fencing + system instruction above.
+ * No regex catches paraphrase, so don't rely on this alone.
+ */
 export function defangSource(text: string): string {
-  return text.replace(
-    /\b(ignore|disregard|forget)\b[^\n]{0,40}\b(previous|prior|above|all)\b[^\n]{0,40}\b(instructions?|prompts?|rules?)\b/gi,
-    '[removed]',
+  return (
+    text
+      // "ignore/disregard/forget/override … previous/all … instructions/rules/prompt"
+      .replace(
+        /\b(ignore|disregard|forget|override|bypass)\b[\s\S]{0,50}?\b(previous|prior|above|earlier|all|your|the)\b[\s\S]{0,30}?\b(instructions?|prompts?|rules?|directions?|context)\b/gi,
+        '[removed]',
+      )
+      // imperative "mark/treat/classify/label/rate … as supported/verified/true"
+      .replace(
+        /\b(mark|treat|classify|label|rate|deem|consider|score)\b[\s\S]{0,30}?\bas\b[\s\S]{0,15}?\b(supported|verified|true|correct|accurate)\b/gi,
+        '[removed]',
+      )
+      // fake authority headers / role resets
+      .replace(/\b(system\s*(prompt|message|instructions?)|you\s+are\s+now|new\s+instructions?)\b/gi, '[removed]')
   );
 }
 
