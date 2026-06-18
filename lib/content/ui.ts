@@ -24,6 +24,14 @@ const VERDICT_COLOR: Record<VerifyVerdict, string> = {
   error: '#4b5563',
 };
 
+const SUPPORT_LABEL: Record<string, string> = {
+  supported: 'Supported',
+  partial: 'Partially supported',
+  unsupported: 'Not supported',
+  no_source: 'No source cited',
+  unverifiable: 'Unverifiable',
+};
+
 const STAGE_LABEL: Record<VerifyStage, string> = {
   idle: 'Ready',
   extracting: 'Extracting claims…',
@@ -230,7 +238,7 @@ export class VerifyPanel {
         return `
           <div class="claim">
             <p class="txt">${escapeHtml(claim.text)}</p>
-            <span class="tag" style="background:${supportColor(support)}">${escapeHtml(support)}</span>
+            <span class="tag" style="background:${supportColor(support)}">${escapeHtml(SUPPORT_LABEL[support] ?? support)}</span>
             ${a?.rationale ? `<p class="rationale">${escapeHtml(a.rationale)}</p>` : ''}
             ${cites ? `<ul class="cites">${cites}</ul>` : ''}
           </div>`;
@@ -253,7 +261,8 @@ export class VerifyPanel {
               .join('')}</ul></div>`
           : ''
       }`;
-    const cost = result.usage ? ` · ~${formatUsd(result.usage.estimatedUsd)}` : '';
+    // Measured from reported tokens — shown without the "~" used for the pre-run estimate.
+    const cost = result.usage ? ` · cost ${formatUsd(result.usage.usd)}` : '';
     this.setFoot(
       `Checked with ${escapeHtml(result.model)}${cost} · ${new Date(result.createdAt).toLocaleString()}`,
     );

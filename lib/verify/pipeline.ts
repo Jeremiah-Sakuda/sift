@@ -126,7 +126,7 @@ export async function runVerify(
       claims,
       citations,
       assessments,
-      usage: { ...usage, estimatedUsd: costUsd(usage, settings.model) },
+      usage: { ...usage, usd: costUsd(usage, settings.model) },
     };
   } catch (err) {
     onProgress('error');

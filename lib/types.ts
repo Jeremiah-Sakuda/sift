@@ -215,8 +215,11 @@ export interface VerifyResult {
   assessments: ClaimAssessment[];
   model: string;
   createdAt: string;
-  /** Token usage + rough USD cost of this verification (absent on cached/error short-circuits). */
-  usage?: { inputTokens: number; outputTokens: number; estimatedUsd: number };
+  /**
+   * Token usage + USD cost of this verification, computed from the tokens the API
+   * actually reported (× list price). Absent on cached/error short-circuits.
+   */
+  usage?: { inputTokens: number; outputTokens: number; usd: number };
   /** Present when verdict is `error`. */
   error?: string;
 }
