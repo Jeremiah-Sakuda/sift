@@ -1,0 +1,51 @@
+name: "AI surface broken"
+description: "A known AI surface isn't tagged/blocked, is tagged when it shouldn't be, or breaks the page."
+title: "[surface] "
+labels: ["selector"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping keep the selector list working! Selectors rot as sites
+        reship their DOM — the details below make a fix fast.
+  - type: input
+    id: surface
+    attributes:
+      label: Which surface?
+      placeholder: "e.g. Google AI Overview, Perplexity Answer, OpenAI ChatKit"
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What's wrong?
+      options:
+        - "Not tagged/blocked (selector misses it)"
+        - "Tagged when it shouldn't be (false positive)"
+        - "Blocking breaks the page layout"
+        - "Verify can't find the answer text or citations"
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Page URL (and trigger query if relevant)
+      placeholder: "https://www.google.com/search?q=how+many+pickles"
+    validations:
+      required: true
+  - type: textarea
+    id: selectors
+    attributes:
+      label: Which selectors still match?
+      description: "From DevTools console, paste the count for each selector you tried, e.g. document.querySelectorAll('…').length"
+      render: text
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: "Drag in a screenshot of the surface (with the Sift badge or missing badge)."
+  - type: input
+    id: env
+    attributes:
+      label: Browser & Sift version
+      placeholder: "Chrome 140 · Sift 0.1.0"

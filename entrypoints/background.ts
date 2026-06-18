@@ -59,7 +59,7 @@ async function handleVerify(request: VerifyRequest, tabId?: number): Promise<Ver
     assessments: [],
   };
 
-  if (!settings.verify.apiKey) {
+  if (settings.verify.provider === 'anthropic' && !settings.verify.apiKey) {
     return { ...base, verdict: 'error', summary: 'Add an Anthropic API key in Sift options to use Verify.', error: 'missing_api_key' };
   }
 

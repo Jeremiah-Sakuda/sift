@@ -3,29 +3,53 @@ import { aggregateVerdict, mapLimit } from '@/lib/verify/pipeline';
 import type { Citation, ClaimAssessment } from '@/lib/types';
 
 const cite = (status: Citation['status'], id = 'c'): Citation => ({ id, url: 'https://x', status });
-const assess = (support: ClaimAssessment['support']): ClaimAssessment => ({
-  claimId: 'c',
-  support,
-  rationale: '',
-  citationIds: [],
-});
+const assess = (
+  support: ClaimAssessment['support'],
+  citationIds: string[] = [],
+): ClaimAssessment => ({ claimId: 'c', support, rationale: '', citationIds });
 
 describe('aggregateVerdict precedence', () => {
-  it('flags fabricated citations first (a dead link)', () => {
-    expect(aggregateVerdict([cite('dead'), cite('ok')], [assess('supported')])).toBe(
-      'fabricated_citations',
-    );
+  it('flags fabricated only when a claim is backed solely by dead links', () => {
+    // The claim cites just c-dead, which is 404 → fabricated.
+    expect(
+      aggregateVerdict([cite('dead', 'c-dead')], [assess('unverifiable', ['c-dead'])]),
+    ).toBe('fabricated_citations');
   });
 
-  it('flags unsupported claims when no dead links', () => {
+  it('does NOT cry fabrication when one dead link sits beside live, supported sources', () => {
+    // Routine link rot: one dead citation, but the claim is supported by a live one.
+    const citations = [cite('dead', 'c1'), cite('ok', 'c2')];
+    expect(aggregateVerdict(citations, [assess('supported', ['c2'])])).toBe('sourced_supported');
+  });
+
+  it('flags unsupported claims when no fabrication', () => {
     expect(aggregateVerdict([cite('ok')], [assess('unsupported'), assess('supported')])).toBe(
       'unsupported_claims',
     );
   });
 
-  it('reports sourced & supported when claims are backed', () => {
-    expect(aggregateVerdict([cite('ok')], [assess('supported'), assess('partial')])).toBe(
+  it('reports sourced & supported only when fully supported (no partials)', () => {
+    expect(aggregateVerdict([cite('ok')], [assess('supported'), assess('supported')])).toBe(
       'sourced_supported',
+    );
+  });
+
+  it('does NOT let a lone partial earn the green badge', () => {
+    expect(aggregateVerdict([cite('ok')], [assess('partial'), assess('unverifiable')])).toBe(
+      'partially_supported',
+    );
+    expect(aggregateVerdict([cite('ok')], [assess('supported'), assess('partial')])).toBe(
+      'partially_supported',
+    );
+  });
+
+  it('does NOT go green when a claim is uncited/unverifiable', () => {
+    // One supported claim + one with no source must not earn the clean green badge.
+    expect(aggregateVerdict([cite('ok')], [assess('supported'), assess('no_source')])).toBe(
+      'partially_supported',
+    );
+    expect(aggregateVerdict([cite('ok')], [assess('supported'), assess('unverifiable')])).toBe(
+      'partially_supported',
     );
   });
 

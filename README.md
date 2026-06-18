@@ -4,11 +4,15 @@
 
 # Sift
 
-**Tag · Verify · Block — take back control of AI on the pages you visit.**
+**When an AI answer cites sources, Sift checks whether those sources actually back the
+claims — and tells you plainly when it can't.**
 
-A browser extension that puts one simple dial on the AI features sites ship at you,
-and — the part worth building — **verifies** whether an AI answer is actually backed
-by the sources it cites.
+A browser extension for researchers, journalists, and anyone who reads AI answers but
+doesn't take them on faith. It also tags or blocks the known AI surfaces sites ship at
+you — but the part worth building is **Verify**.
+
+**Free, no setup:** Tag and Block need no account, no API key, and no permissions.
+**Verify** is the optional power feature (bring-your-own model, or a local one).
 
 [Install (dev)](#getting-started) · [How Verify works](#verify-the-differentiator) · [Privacy](PRIVACY.md) · [Contributing](CONTRIBUTING.md)
 
@@ -25,7 +29,7 @@ intensity gradient:
 | Level | What it does | How | Cost |
 |------|--------------|-----|------|
 | **Tag** *(default)* | Marks known AI surfaces with a small, dismissible badge + outline | Known-surface selector list | Free, instant |
-| **Verify** | Checks an AI answer's citations and claim support, then annotates trust | Selector list + on-demand source fetch + your own LLM key | Slower, your API cost |
+| **Verify** | Checks an AI answer's citations and claim support, then annotates trust | Selector list + on-demand source fetch + your own (or a local) model | Slower; your API cost, or free with a local model |
 | **Block** | Removes known AI surfaces entirely (`display:none`) | Same selector list as Tag | Free, instant |
 | **Off** | Sift does nothing on the page | — | — |
 
@@ -50,18 +54,24 @@ whether a human or a bot is answering.
 For AI *answer* surfaces, click **Verify** on the badge and Sift will:
 
 1. **Extract** the answer's discrete factual claims and the citations it provides.
-2. **Cheap check first** — resolve every cited URL and flag dead/404 links. A fabricated
-   citation (a source that doesn't exist) is a strong, low-cost hallucination signal.
-3. **Support check** — fetch the live cited sources and test whether they actually back
-   each claim (entailment, via one LLM call per claim).
-4. **Annotate** the answer with an honest verdict:
-   `Sourced & supported` · `Unsupported claims` · `Fabricated citations` · `Unverifiable`.
-5. **Refuse, don't guess** — when Sift can't verify (no citations, sources unreachable),
-   it says so plainly instead of inventing a confidence score.
+2. **Check the links (model-free, cheap)** — resolve every cited URL. A cited page that
+   returns 404/gone is a fabricated citation: a strong, zero-cost hallucination signal,
+   and it's *fact*, not a judgment call.
+3. **Check the support (advisory, LLM)** — fetch the live cited sources and judge whether
+   they actually back each claim (entailment, one model call per claim). This is an
+   advisory judgment, not ground truth — see the [accuracy eval](CONTRIBUTING.md#verify-accuracy-eval).
+4. **Annotate** with an honest verdict and a per-claim breakdown:
+   `Sourced & supported` · `Partially supported` · `Unsupported claims` ·
+   `Fabricated citations` · `Unverifiable`. "Partial" never counts as a clean pass, and a
+   single rotted link among good ones doesn't condemn the whole answer.
+5. **Refuse, don't guess** — when Sift can't verify (no citations, a source that's blocked
+   or JavaScript-rendered), it says exactly *why* instead of inventing confidence.
 
-Verify is **on-demand** and **bring-your-own-key** (Anthropic). Nothing leaves your
-device except the source fetches and the model call *you* trigger. Results are cached per
-answer so the same answer is never re-checked.
+Verify is **on-demand**, shows an **estimated cost before you click** (and the real cost
+after), and caches per answer. Bring your own **Anthropic** key, or point it at a
+**local / OpenAI-compatible** server (Ollama, llama.cpp, LiteLLM) so page and source text
+never leave your machine. Nothing leaves your device except the source fetches and the
+model call *you* trigger.
 
 ---
 
@@ -79,15 +89,18 @@ npm run compile     # type-check (tsc --noEmit)
 ```
 
 To load a production build manually: `chrome://extensions` → enable **Developer mode** →
-**Load unpacked** → select `.output/chrome-mv3`.
+**Load unpacked** → select `.output/chrome-mv3`. Publishing to the Chrome Web Store is
+documented in [docs/STORE.md](docs/STORE.md).
 
 ### Using Verify
 
 1. Open the extension **Options**.
-2. Paste an [Anthropic API key](https://console.anthropic.com/settings/keys) and click **Test**.
+2. Choose a provider: paste an [Anthropic API key](https://console.anthropic.com/settings/keys),
+   or pick **Local / OpenAI-compatible** and enter your server URL. Click **Test**.
 3. Click **Enable** under "Fetch cited sources" (grants Sift permission to read pages
    during a Verify — requested only when you opt in).
 4. Set a site (or your default) to **Verify**, then click **Verify** on a tagged answer.
+   You'll see an estimated cost before it runs and the actual cost after.
 
 ---
 

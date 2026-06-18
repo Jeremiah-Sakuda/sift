@@ -10,23 +10,32 @@
 
 import type { Surface, VerifyResult, VerifyStage, VerifyVerdict } from '../types';
 import { VERDICT_LABELS } from '../types';
+import { formatUsd } from '../verify/cost';
 
 export const SIFT_ATTR = 'data-sift';
 const STYLE_ID = 'sift-base-styles';
 
 const VERDICT_COLOR: Record<VerifyVerdict, string> = {
   sourced_supported: '#15803d',
+  partially_supported: '#b45309',
   unsupported_claims: '#b45309',
   fabricated_citations: '#b91c1c',
   unverifiable: '#4b5563',
   error: '#4b5563',
 };
 
+const SUPPORT_LABEL: Record<string, string> = {
+  supported: 'Supported',
+  partial: 'Partially supported',
+  unsupported: 'Not supported',
+  no_source: 'No source cited',
+  unverifiable: 'Unverifiable',
+};
+
 const STAGE_LABEL: Record<VerifyStage, string> = {
   idle: 'Ready',
   extracting: 'Extracting claims…',
-  checking_links: 'Checking links…',
-  fetching_sources: 'Fetching sources…',
+  fetching_sources: 'Fetching & checking sources…',
   judging: 'Checking support…',
   done: 'Done',
   error: 'Error',
@@ -45,6 +54,9 @@ export function injectBaseStyles(doc: Document = document): void {
     [${SIFT_ATTR}-verdict="fabricated_citations"],
     [${SIFT_ATTR}-verdict="unsupported_claims"] {
       outline-color: rgba(220, 38, 38, 0.8) !important;
+    }
+    [${SIFT_ATTR}-verdict="partially_supported"] {
+      outline-color: rgba(180, 83, 9, 0.85) !important;
     }
     [${SIFT_ATTR}-verdict="sourced_supported"] {
       outline-color: rgba(21, 128, 61, 0.8) !important;
@@ -191,15 +203,21 @@ export class VerifyPanel {
     this.host.remove();
   }
 
-  showProgress(surface: Surface, stage: VerifyStage, detail?: string): void {
+  showProgress(surface: Surface, stage: VerifyStage, detail?: string, estimateUsd?: number): void {
     this.mount();
     this.setDot('#9ca3af');
     this.titleEl.textContent = `Verifying · ${surface.name}`;
+    const estimate =
+      estimateUsd != null
+        ? `<div class="rationale" style="margin-top:6px">Estimated cost: ~${escapeHtml(
+            formatUsd(estimateUsd),
+          )} (rough)</div>`
+        : '';
     this.body.innerHTML = `
       <div class="stage"><span class="spinner"></span><span>${escapeHtml(STAGE_LABEL[stage])}${
         detail ? ` (${escapeHtml(detail)})` : ''
-      }</span></div>`;
-    this.setFoot('Sift fetches the cited sources and checks them with your API key. Source text is not stored.');
+      }</span></div>${estimate}`;
+    this.setFoot('Sift fetches the cited sources and checks them with your API key. Source text is sent to your model, then discarded.');
   }
 
   showResult(surface: Surface, result: VerifyResult): void {
@@ -220,7 +238,7 @@ export class VerifyPanel {
         return `
           <div class="claim">
             <p class="txt">${escapeHtml(claim.text)}</p>
-            <span class="tag" style="background:${supportColor(support)}">${escapeHtml(support)}</span>
+            <span class="tag" style="background:${supportColor(support)}">${escapeHtml(SUPPORT_LABEL[support] ?? support)}</span>
             ${a?.rationale ? `<p class="rationale">${escapeHtml(a.rationale)}</p>` : ''}
             ${cites ? `<ul class="cites">${cites}</ul>` : ''}
           </div>`;
@@ -243,7 +261,11 @@ export class VerifyPanel {
               .join('')}</ul></div>`
           : ''
       }`;
-    this.setFoot(`Checked with ${escapeHtml(result.model)} · ${new Date(result.createdAt).toLocaleString()}`);
+    // Measured from reported tokens — shown without the "~" used for the pre-run estimate.
+    const cost = result.usage ? ` · cost ${formatUsd(result.usage.usd)}` : '';
+    this.setFoot(
+      `Checked with ${escapeHtml(result.model)}${cost} · ${new Date(result.createdAt).toLocaleString()}`,
+    );
   }
 
   private setDot(color: string): void {

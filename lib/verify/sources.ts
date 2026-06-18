@@ -11,6 +11,7 @@
  */
 
 import { MAX_SOURCE_CHARS } from '../config';
+import { isBlockedHost, isPublicHttpUrl } from '../net';
 import type { Citation, CitationStatus } from '../types';
 
 export interface FetchedSource {
@@ -27,6 +28,17 @@ export async function fetchCitation(
   timeoutMs: number,
   maxChars: number = MAX_SOURCE_CHARS,
 ): Promise<FetchedSource> {
+  // SSRF guard: refuse internal/loopback/private targets before touching the network.
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { citation: { id, url, title, status: 'unreachable' } };
+  }
+  if (!isPublicHttpUrl(parsed)) {
+    return { citation: { id, url, title, status: 'unreachable' } };
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -34,9 +46,15 @@ export async function fetchCitation(
       method: 'GET',
       redirect: 'follow',
       signal: controller.signal,
-      // Identify ourselves honestly; some sites serve a 403 to unknown agents.
+      // Never attach the user's cookies/session to a third-party source fetch.
+      credentials: 'omit',
       headers: { accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8' },
     });
+
+    // A public URL can redirect into an internal host; never read that body.
+    if (res.url && isInternalUrl(res.url)) {
+      return { citation: { id, url, title, status: 'unreachable' } };
+    }
 
     const base: Citation = { id, url, title, status: classifyStatus(res.status), httpStatus: res.status };
     if (base.status !== 'ok') return { citation: base };
@@ -57,6 +75,14 @@ export async function fetchCitation(
     };
   } finally {
     clearTimeout(timer);
+  }
+}
+
+function isInternalUrl(u: string): boolean {
+  try {
+    return isBlockedHost(new URL(u).hostname);
+  } catch {
+    return true;
   }
 }
 
@@ -83,11 +109,32 @@ export function htmlToText(html: string): string {
   out = out.replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, ' ');
   out = out.replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, ' ');
   out = out.replace(/<!--[\s\S]*?-->/g, ' ');
+  // Drop obvious page chrome so the model judges the article, not the nav/footer.
+  out = out.replace(/<(nav|footer|aside|form)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
+  // Focus on the main content region when the page marks one.
+  out = isolateMainContent(out);
   // Preserve paragraph-ish breaks before stripping tags.
   out = out.replace(BLOCK_TAGS, '\n');
   out = out.replace(/<[^>]+>/g, ' ');
   out = decodeEntities(out);
   return collapse(out);
+}
+
+/**
+ * Readability-lite: if the page marks its main content (<main> or <article>),
+ * return just that so boilerplate doesn't crowd out the article within the
+ * character budget. Heuristic and regex-based (no DOMParser in the worker).
+ */
+export function isolateMainContent(html: string): string {
+  const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
+  if (main && main[1].trim().length > 200) return main[1];
+
+  const articles = [...html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi)].map((m) => m[1]);
+  if (articles.length) {
+    const longest = articles.reduce((a, b) => (b.length > a.length ? b : a));
+    if (longest.trim().length > 200) return longest;
+  }
+  return html;
 }
 
 function deriveTitle(html: string): string | undefined {

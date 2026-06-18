@@ -23,14 +23,18 @@ explicitly trigger by clicking the Verify button:
 1. **Source fetches.** Sift downloads each page the AI answer cites, in order to check
    whether those sources actually support the answer's claims. This requires the optional
    "fetch cited sources" permission, which you grant explicitly in Options — it is not
-   requested at install time.
+   requested at install time. These fetches are made **without your cookies or session**
+   (`credentials: 'omit'`), so they can't carry your logged-in identity to third-party
+   sites, and Sift refuses to fetch internal/loopback/private network addresses.
 2. **One LLM call per Verify.** The answer text and the fetched source text are sent to
    the Anthropic API using **your own API key**, to extract claims and judge support.
    This call goes directly from your browser to `api.anthropic.com` — there is no Sift
    proxy or server in between.
 
-Sift does not store the fetched source text; it is used only for the duration of the
-check and then discarded. Only the resulting verdict is cached locally.
+To be precise about egress: the fetched source text **is sent to your model** (step 2
+above) for the support check. Sift does not *store* it — after that call it is discarded,
+and only the resulting verdict is cached locally. If you don't want source text leaving
+your machine at all, set the Verify provider to a local server (see Options → Verify).
 
 ## Your API key
 

@@ -8,9 +8,17 @@
 
 import { browser } from '../browser';
 import { sendMessage } from '../messaging';
-import { getSelectorList, surfacesForUrl, findSurfaceElements, findCitations, extractAnswerText } from '../selectors';
+import {
+  getSelectorList,
+  surfacesForUrl,
+  surfaceIsUniversal,
+  findSurfaceElements,
+  findCitations,
+  extractAnswerText,
+} from '../selectors';
 import { getSettings, normalizeHostname, resolveLevel } from '../storage';
 import { answerHash } from '../hash';
+import { estimateUpfront } from '../verify/cost';
 import { injectBaseStyles, createBadge, VerifyPanel, SIFT_ATTR } from './ui';
 import type { Level, Settings, SelectorList, Surface, Message } from '../types';
 
@@ -48,11 +56,26 @@ export class SiftController {
     this.settings = await getSettings();
     this.level = resolveLevel(this.settings, location.hostname).level;
 
+    // Bail entirely on origins no surface can ever match — no styles, no observer.
+    const matched = surfacesForUrl(this.list, location.href);
+    if (matched.length === 0) return;
+
     injectBaseStyles();
     this.listenForChanges();
     this.listenForProgress();
-    this.observeDom();
     this.scan();
+
+    if (matched.some((s) => !surfaceIsUniversal(s))) {
+      // A host-specific AI surface (an SPA where answers stream in) — watch live.
+      this.observeDom();
+    } else {
+      // Only a universal widget (e.g. ChatKit) could appear here; a permanent
+      // subtree observer on every page is the panel's top perf concern. Do a few
+      // bounded re-scans to catch a late-injected widget instead.
+      for (const ms of [800, 2500, 6000]) {
+        setTimeout(() => this.scan(), ms);
+      }
+    }
   }
 
   // --- reactivity ----------------------------------------------------------
@@ -231,7 +254,13 @@ export class SiftController {
     this.activeVerifySurface = surface;
 
     if (!this.panel) this.panel = new VerifyPanel();
-    this.panel.showProgress(surface, 'extracting');
+    const estimate = estimateUpfront({
+      answerChars: answerText.length,
+      citationCount: citations.length,
+      maxSources: this.settings.verify.maxSourcesPerCheck,
+      model: this.settings.verify.model,
+    });
+    this.panel.showProgress(surface, 'extracting', undefined, estimate.usd);
 
     try {
       const cached = await sendMessage({ type: 'GET_CACHED_VERIFY', answerHash: hash });

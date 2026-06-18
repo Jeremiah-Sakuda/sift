@@ -5,6 +5,7 @@
  * Pure DOM/string logic, no extension APIs, so it is unit-testable in jsdom.
  */
 
+import { isPublicHttpUrl } from '../net';
 import type { Surface, SelectorList } from '../types';
 
 /** Host glob match: `*` (any), `example.com` (exact), `*.example.com` (domain + subdomains). */
@@ -34,6 +35,15 @@ export function surfacesForUrl(list: SelectorList, url: string): Surface[] {
   return list.surfaces.filter(
     (s) => s.enabled !== false && surfaceMatchesUrl(s, url),
   );
+}
+
+/**
+ * A "universal" surface matches every host (e.g. the embeddable OpenAI ChatKit
+ * widget, matches: ['*']). These can appear anywhere, so they don't justify a
+ * permanent observer on every page — host-specific surfaces (the AI SPAs) do.
+ */
+export function surfaceIsUniversal(surface: Surface): boolean {
+  return surface.matches.includes('*');
 }
 
 /**
@@ -94,7 +104,8 @@ export function normalizeCitationUrl(href: string): string | null {
   if (href.trim().startsWith('#')) return null;
   try {
     const url = new URL(href, location.href);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    // Reject non-http(s) and internal/loopback/private targets (SSRF guard).
+    if (!isPublicHttpUrl(url)) return null;
     url.hash = '';
     return url.toString();
   } catch {

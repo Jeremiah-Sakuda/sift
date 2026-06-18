@@ -99,12 +99,18 @@ export interface SelectorList {
 // Settings (persisted in chrome.storage.local)
 // ---------------------------------------------------------------------------
 
-export type VerifyProvider = 'anthropic';
+export type VerifyProvider = 'anthropic' | 'openai-compatible';
 
 export interface VerifySettings {
   provider: VerifyProvider;
   /** Bring-your-own API key. Stored in chrome.storage.local, never leaves device except the verify call. */
   apiKey: string;
+  /**
+   * Endpoint base override. Empty = the provider default. Lets a privacy-minded
+   * user point Verify at a local / self-hosted OpenAI-compatible server (Ollama,
+   * llama.cpp, LiteLLM) so page + source text never reaches a commercial cloud.
+   */
+  baseUrl: string;
   /** Model id used for claim extraction + entailment. */
   model: string;
   /** Cap on how many cited sources are fetched per verification (cost control). */
@@ -175,6 +181,7 @@ export interface ClaimAssessment {
  */
 export type VerifyVerdict =
   | 'sourced_supported'
+  | 'partially_supported'
   | 'unsupported_claims'
   | 'fabricated_citations'
   | 'unverifiable'
@@ -182,6 +189,7 @@ export type VerifyVerdict =
 
 export const VERDICT_LABELS: Record<VerifyVerdict, string> = {
   sourced_supported: 'Sourced & supported',
+  partially_supported: 'Partially supported',
   unsupported_claims: 'Unsupported claims',
   fabricated_citations: 'Fabricated citations',
   unverifiable: 'Unverifiable',
@@ -191,7 +199,6 @@ export const VERDICT_LABELS: Record<VerifyVerdict, string> = {
 export type VerifyStage =
   | 'idle'
   | 'extracting'
-  | 'checking_links'
   | 'fetching_sources'
   | 'judging'
   | 'done'
@@ -208,6 +215,11 @@ export interface VerifyResult {
   assessments: ClaimAssessment[];
   model: string;
   createdAt: string;
+  /**
+   * Token usage + USD cost of this verification, computed from the tokens the API
+   * actually reported (× list price). Absent on cached/error short-circuits.
+   */
+  usage?: { inputTokens: number; outputTokens: number; usd: number };
   /** Present when verdict is `error`. */
   error?: string;
 }
