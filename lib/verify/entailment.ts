@@ -48,22 +48,32 @@ export async function judgeClaim(params: {
   baseUrl?: string;
   claim: Claim;
   sources: SourceText[];
+  /** Statuses of this claim's cited sources, for an honest "why" when none are readable. */
+  citationStatuses?: import('../types').CitationStatus[];
   signal?: AbortSignal;
   usageSink?: (usage: { inputTokens: number; outputTokens: number }) => void;
 }): Promise<ClaimAssessment> {
-  const { apiKey, model, provider, baseUrl, claim, sources, signal, usageSink } = params;
+  const { apiKey, model, provider, baseUrl, claim, sources, citationStatuses = [], signal, usageSink } = params;
 
-  // No usable source text — do not spend an LLM call; report honestly.
+  // No usable source text — do not spend an LLM call; report honestly *why*.
   if (sources.length === 0) {
-    return {
-      claimId: claim.id,
-      support: claim.citationIds.length === 0 ? 'no_source' : 'unverifiable',
-      rationale:
-        claim.citationIds.length === 0
-          ? 'The answer attributes no citation to this claim.'
-          : 'The cited source(s) could not be retrieved, so support cannot be judged.',
-      citationIds: claim.citationIds,
-    };
+    if (claim.citationIds.length === 0) {
+      return {
+        claimId: claim.id,
+        support: 'no_source',
+        rationale: 'The answer attributes no citation to this claim.',
+        citationIds: claim.citationIds,
+      };
+    }
+    let rationale = 'The cited source(s) could not be retrieved, so support cannot be judged.';
+    if (citationStatuses.includes('dead')) {
+      rationale = 'The cited source returned 404/gone — it could not be read.';
+    } else if (citationStatuses.includes('unreachable')) {
+      rationale = 'The cited source could not be read (blocked, timed out, or rendered by JavaScript).';
+    } else if (citationStatuses.includes('unchecked')) {
+      rationale = 'This source was beyond the per-check source limit and was not fetched.';
+    }
+    return { claimId: claim.id, support: 'unverifiable', rationale, citationIds: claim.citationIds };
   }
 
   const perSourceBudget = Math.max(1000, Math.floor(MAX_SOURCE_CHARS / sources.length));

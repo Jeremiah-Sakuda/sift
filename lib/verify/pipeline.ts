@@ -99,6 +99,9 @@ export async function runVerify(
           title: f.citation.title,
           text: f.text!,
         }));
+      const citationStatuses = claim.citationIds
+        .map((cid) => textById.get(cid)?.citation.status)
+        .filter((s): s is NonNullable<typeof s> => !!s);
       return judgeClaim({
         apiKey: settings.apiKey,
         model: settings.model,
@@ -106,6 +109,7 @@ export async function runVerify(
         baseUrl: settings.baseUrl,
         claim,
         sources,
+        citationStatuses,
         signal,
         usageSink,
       });
