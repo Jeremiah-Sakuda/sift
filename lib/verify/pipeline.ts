@@ -139,19 +139,34 @@ async function fetchCitations(
   return [...checked, ...overflow];
 }
 
+/**
+ * Aggregate per-claim judgements into one honest verdict.
+ *
+ * Honesty rules (panel feedback): a single dead link does NOT condemn an
+ * otherwise well-sourced answer — `fabricated_citations` requires a claim whose
+ * *every* cited source is a dead link (i.e. backed only by nonexistent pages).
+ * And `partial` is NOT counted as `supported`: a mix surfaces as
+ * `partially_supported`, never a clean green badge.
+ */
 export function aggregateVerdict(
   citations: Citation[],
   assessments: ClaimAssessment[],
 ): VerifyVerdict {
-  const hasDead = citations.some((c) => c.status === 'dead');
-  if (hasDead) return 'fabricated_citations';
+  const statusOf = (id: string) => citations.find((c) => c.id === id)?.status;
 
-  const hasUnsupported = assessments.some((a) => a.support === 'unsupported');
-  if (hasUnsupported) return 'unsupported_claims';
+  // A claim is fabricated-only when it cites sources and ALL of them are dead.
+  const fabricated = assessments.some(
+    (a) => a.citationIds.length > 0 && a.citationIds.every((id) => statusOf(id) === 'dead'),
+  );
+  if (fabricated) return 'fabricated_citations';
 
-  const hasSupported = assessments.some((a) => a.support === 'supported' || a.support === 'partial');
-  if (hasSupported) return 'sourced_supported';
+  if (assessments.some((a) => a.support === 'unsupported')) return 'unsupported_claims';
 
+  const supported = assessments.filter((a) => a.support === 'supported').length;
+  const partial = assessments.filter((a) => a.support === 'partial').length;
+
+  if (supported > 0 && partial === 0) return 'sourced_supported';
+  if (supported > 0 || partial > 0) return 'partially_supported';
   return 'unverifiable';
 }
 
@@ -164,19 +179,32 @@ function buildSummary(
   const supported = assessments.filter((a) => a.support === 'supported').length;
   const partial = assessments.filter((a) => a.support === 'partial').length;
   const unsupported = assessments.filter((a) => a.support === 'unsupported').length;
+  const unverifiable = assessments.filter(
+    (a) => a.support === 'unverifiable' || a.support === 'no_source',
+  ).length;
   const total = assessments.length;
+
+  const deadNote = dead ? ` ${dead} cited link${dead === 1 ? '' : 's'} returned 404/gone.` : '';
+  const coverage =
+    `${supported} of ${total} claim${total === 1 ? '' : 's'} fully supported` +
+    (partial ? `, ${partial} partial` : '') +
+    (unsupported ? `, ${unsupported} unsupported` : '') +
+    (unverifiable ? `, ${unverifiable} unverifiable` : '') +
+    '.';
 
   switch (verdict) {
     case 'fabricated_citations':
-      return `${dead} cited link${dead === 1 ? '' : 's'} could not be found (404/gone) — a strong fabrication signal. Treat this answer with caution.`;
+      return `At least one claim is backed only by links that don't exist (404/gone) — a strong fabrication signal.${deadNote} ${coverage}`;
     case 'unsupported_claims':
-      return `${unsupported} of ${total} checked claim${total === 1 ? '' : 's'} are not supported by the cited sources.`;
+      return `${unsupported} of ${total} claim${total === 1 ? '' : 's'} are contradicted or unsupported by the cited sources.${deadNote}`;
     case 'sourced_supported':
-      return `${supported + partial} of ${total} checked claims are backed by their sources${partial ? ` (${partial} partially)` : ''}. No fabricated links found.`;
+      return `${coverage}${dead ? deadNote : ' No dead links.'}`;
+    case 'partially_supported':
+      return `Mixed support — ${coverage}${deadNote}`;
     case 'unverifiable':
       return citations.length === 0
         ? 'The answer cites no sources, so Sift cannot verify it.'
-        : 'Sift could not retrieve or judge the cited sources, so this answer is unverifiable.';
+        : `Sift could not retrieve or judge the cited sources, so this answer is unverifiable.${deadNote}`;
     default:
       return 'Verification failed.';
   }

@@ -175,6 +175,7 @@ export interface ClaimAssessment {
  */
 export type VerifyVerdict =
   | 'sourced_supported'
+  | 'partially_supported'
   | 'unsupported_claims'
   | 'fabricated_citations'
   | 'unverifiable'
@@ -182,6 +183,7 @@ export type VerifyVerdict =
 
 export const VERDICT_LABELS: Record<VerifyVerdict, string> = {
   sourced_supported: 'Sourced & supported',
+  partially_supported: 'Partially supported',
   unsupported_claims: 'Unsupported claims',
   fabricated_citations: 'Fabricated citations',
   unverifiable: 'Unverifiable',

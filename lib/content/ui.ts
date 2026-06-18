@@ -16,6 +16,7 @@ const STYLE_ID = 'sift-base-styles';
 
 const VERDICT_COLOR: Record<VerifyVerdict, string> = {
   sourced_supported: '#15803d',
+  partially_supported: '#b45309',
   unsupported_claims: '#b45309',
   fabricated_citations: '#b91c1c',
   unverifiable: '#4b5563',
@@ -45,6 +46,9 @@ export function injectBaseStyles(doc: Document = document): void {
     [${SIFT_ATTR}-verdict="fabricated_citations"],
     [${SIFT_ATTR}-verdict="unsupported_claims"] {
       outline-color: rgba(220, 38, 38, 0.8) !important;
+    }
+    [${SIFT_ATTR}-verdict="partially_supported"] {
+      outline-color: rgba(180, 83, 9, 0.85) !important;
     }
     [${SIFT_ATTR}-verdict="sourced_supported"] {
       outline-color: rgba(21, 128, 61, 0.8) !important;
