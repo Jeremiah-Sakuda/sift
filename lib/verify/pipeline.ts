@@ -14,7 +14,8 @@
 import { extractClaims } from './extract';
 import { fetchCitation, type FetchedSource } from './sources';
 import { judgeClaim, type SourceText } from './entailment';
-import { AnthropicError } from './anthropic';
+import { AnthropicError, type TokenUsage } from './anthropic';
+import { costUsd } from './cost';
 import type {
   VerifyRequest,
   VerifySettings,
@@ -56,6 +57,13 @@ export async function runVerify(
 
   const inputCitations = request.citations.slice(0, Math.max(1, settings.maxSourcesPerCheck * 4));
 
+  // Sum token usage across every model call for an accurate post-hoc cost.
+  const usage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
+  const usageSink = (u: TokenUsage) => {
+    usage.inputTokens += u.inputTokens;
+    usage.outputTokens += u.outputTokens;
+  };
+
   try {
     // Steps 1 & 2 run concurrently: claim extraction does not need source bodies.
     onProgress('extracting');
@@ -65,6 +73,7 @@ export async function runVerify(
       answerText: request.answerText,
       citations: inputCitations,
       signal,
+      usageSink,
     });
 
     onProgress('fetching_sources', `${Math.min(inputCitations.length, settings.maxSourcesPerCheck)} sources`);
@@ -88,7 +97,7 @@ export async function runVerify(
           title: f.citation.title,
           text: f.text!,
         }));
-      return judgeClaim({ apiKey: settings.apiKey, model: settings.model, claim, sources, signal });
+      return judgeClaim({ apiKey: settings.apiKey, model: settings.model, claim, sources, signal, usageSink });
     });
 
     // Step 4: aggregate.
@@ -102,6 +111,7 @@ export async function runVerify(
       claims,
       citations,
       assessments,
+      usage: { ...usage, estimatedUsd: costUsd(usage, settings.model) },
     };
   } catch (err) {
     onProgress('error');

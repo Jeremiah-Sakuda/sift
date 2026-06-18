@@ -11,6 +11,7 @@ import { sendMessage } from '../messaging';
 import { getSelectorList, surfacesForUrl, findSurfaceElements, findCitations, extractAnswerText } from '../selectors';
 import { getSettings, normalizeHostname, resolveLevel } from '../storage';
 import { answerHash } from '../hash';
+import { estimateUpfront } from '../verify/cost';
 import { injectBaseStyles, createBadge, VerifyPanel, SIFT_ATTR } from './ui';
 import type { Level, Settings, SelectorList, Surface, Message } from '../types';
 
@@ -231,7 +232,13 @@ export class SiftController {
     this.activeVerifySurface = surface;
 
     if (!this.panel) this.panel = new VerifyPanel();
-    this.panel.showProgress(surface, 'extracting');
+    const estimate = estimateUpfront({
+      answerChars: answerText.length,
+      citationCount: citations.length,
+      maxSources: this.settings.verify.maxSourcesPerCheck,
+      model: this.settings.verify.model,
+    });
+    this.panel.showProgress(surface, 'extracting', undefined, estimate.usd);
 
     try {
       const cached = await sendMessage({ type: 'GET_CACHED_VERIFY', answerHash: hash });

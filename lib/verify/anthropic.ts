@@ -38,6 +38,11 @@ interface ToolDef {
   input_schema: JsonSchema;
 }
 
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
 export interface StructuredCallParams<T> {
   apiKey: string;
   model: string;
@@ -48,6 +53,8 @@ export interface StructuredCallParams<T> {
   tool: ToolDef;
   maxTokens?: number;
   signal?: AbortSignal;
+  /** Receives token usage for cost accounting (best effort). */
+  usageSink?: (usage: TokenUsage) => void;
 }
 
 interface AnthropicContentBlock {
@@ -60,6 +67,7 @@ interface AnthropicContentBlock {
 interface AnthropicResponse {
   content?: AnthropicContentBlock[];
   stop_reason?: string;
+  usage?: { input_tokens?: number; output_tokens?: number };
   error?: { type?: string; message?: string };
 }
 
@@ -69,7 +77,7 @@ interface AnthropicResponse {
  * surface an honest error verdict (REFUSE semantics) rather than guess.
  */
 export async function callStructured<T>(params: StructuredCallParams<T>): Promise<T> {
-  const { apiKey, model, system, prompt, tool, maxTokens = 1024, signal } = params;
+  const { apiKey, model, system, prompt, tool, maxTokens = 1024, signal, usageSink } = params;
 
   if (!apiKey) throw new AnthropicError('No API key configured.', undefined, 'auth');
 
@@ -119,6 +127,12 @@ export async function callStructured<T>(params: StructuredCallParams<T>): Promis
   }
 
   const data = (await res.json()) as AnthropicResponse;
+  if (usageSink && data.usage) {
+    usageSink({
+      inputTokens: data.usage.input_tokens ?? 0,
+      outputTokens: data.usage.output_tokens ?? 0,
+    });
+  }
   const block = data.content?.find((b) => b.type === 'tool_use' && b.name === tool.name);
   if (!block || block.input == null) {
     throw new AnthropicError(

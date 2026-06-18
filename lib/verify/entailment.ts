@@ -33,8 +33,9 @@ export async function judgeClaim(params: {
   claim: Claim;
   sources: SourceText[];
   signal?: AbortSignal;
+  usageSink?: (usage: { inputTokens: number; outputTokens: number }) => void;
 }): Promise<ClaimAssessment> {
-  const { apiKey, model, claim, sources, signal } = params;
+  const { apiKey, model, claim, sources, signal, usageSink } = params;
 
   // No usable source text — do not spend an LLM call; report honestly.
   if (sources.length === 0) {
@@ -72,6 +73,7 @@ export async function judgeClaim(params: {
     prompt,
     maxTokens: 512,
     signal,
+    usageSink,
     tool: {
       name: 'record_judgement',
       description: 'Record whether the sources support the claim.',

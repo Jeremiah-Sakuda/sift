@@ -33,8 +33,9 @@ export async function extractClaims(params: {
   answerText: string;
   citations: ExtractedCitation[];
   signal?: AbortSignal;
+  usageSink?: (usage: { inputTokens: number; outputTokens: number }) => void;
 }): Promise<Claim[]> {
-  const { apiKey, model, answerText, citations, signal } = params;
+  const { apiKey, model, answerText, citations, signal, usageSink } = params;
 
   const numbered = citations.length
     ? citations.map((c, i) => `[${i + 1}] ${c.url}${c.title ? ` — ${c.title}` : ''}`).join('\n')
@@ -59,6 +60,7 @@ export async function extractClaims(params: {
     prompt,
     maxTokens: 2048,
     signal,
+    usageSink,
     tool: {
       name: 'record_claims',
       description: 'Record the discrete factual claims extracted from the answer.',

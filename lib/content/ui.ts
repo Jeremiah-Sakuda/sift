@@ -10,6 +10,7 @@
 
 import type { Surface, VerifyResult, VerifyStage, VerifyVerdict } from '../types';
 import { VERDICT_LABELS } from '../types';
+import { formatUsd } from '../verify/cost';
 
 export const SIFT_ATTR = 'data-sift';
 const STYLE_ID = 'sift-base-styles';
@@ -195,15 +196,21 @@ export class VerifyPanel {
     this.host.remove();
   }
 
-  showProgress(surface: Surface, stage: VerifyStage, detail?: string): void {
+  showProgress(surface: Surface, stage: VerifyStage, detail?: string, estimateUsd?: number): void {
     this.mount();
     this.setDot('#9ca3af');
     this.titleEl.textContent = `Verifying · ${surface.name}`;
+    const estimate =
+      estimateUsd != null
+        ? `<div class="rationale" style="margin-top:6px">Estimated cost: ~${escapeHtml(
+            formatUsd(estimateUsd),
+          )} (rough)</div>`
+        : '';
     this.body.innerHTML = `
       <div class="stage"><span class="spinner"></span><span>${escapeHtml(STAGE_LABEL[stage])}${
         detail ? ` (${escapeHtml(detail)})` : ''
-      }</span></div>`;
-    this.setFoot('Sift fetches the cited sources and checks them with your API key. Source text is not stored.');
+      }</span></div>${estimate}`;
+    this.setFoot('Sift fetches the cited sources and checks them with your API key. Source text is sent to your model, then discarded.');
   }
 
   showResult(surface: Surface, result: VerifyResult): void {
@@ -247,7 +254,10 @@ export class VerifyPanel {
               .join('')}</ul></div>`
           : ''
       }`;
-    this.setFoot(`Checked with ${escapeHtml(result.model)} · ${new Date(result.createdAt).toLocaleString()}`);
+    const cost = result.usage ? ` · ~${formatUsd(result.usage.estimatedUsd)}` : '';
+    this.setFoot(
+      `Checked with ${escapeHtml(result.model)}${cost} · ${new Date(result.createdAt).toLocaleString()}`,
+    );
   }
 
   private setDot(color: string): void {
