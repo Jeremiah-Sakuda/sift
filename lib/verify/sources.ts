@@ -34,7 +34,8 @@ export async function fetchCitation(
       method: 'GET',
       redirect: 'follow',
       signal: controller.signal,
-      // Identify ourselves honestly; some sites serve a 403 to unknown agents.
+      // Never attach the user's cookies/session to a third-party source fetch.
+      credentials: 'omit',
       headers: { accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8' },
     });
 
