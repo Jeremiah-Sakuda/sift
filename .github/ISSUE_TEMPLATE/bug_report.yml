@@ -1,0 +1,24 @@
+name: "Bug report"
+description: "Something else isn't working (popup, options, Verify, etc.)."
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: "What you did, what you expected, what you got. Console errors help."
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Browser & Sift version
+      placeholder: "Chrome 140 · Sift 0.1.0"
+  - type: checkboxes
+    id: tier
+    attributes:
+      label: Which tier?
+      options:
+        - label: Tag
+        - label: Verify
+        - label: Block
