@@ -15,7 +15,9 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('fetchCitation security behavior', () => {
   it('omits credentials on the request', async () => {
-    const fetchMock = vi.fn(async () => fakeResponse({ url: 'https://example.com/a' }));
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
+      fakeResponse({ url: 'https://example.com/a' }),
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     await fetchCitation('c', 'https://example.com/a', 'A', 1000);

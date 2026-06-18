@@ -36,6 +36,18 @@ Improvements from an unbiased reaction panel (OSS devs, reviewers, consumers).
 - Popup always exposes the default-level control, even on non-web pages.
 - Appearance toggles (badges/outline) now apply live to open tabs.
 
+### Round-2 hardening (from re-running the panel on the improved code)
+- **Closed a confirmed SSRF bypass**: IPv4-mapped IPv6 (`[::ffff:169.254.169.254]`,
+  which the URL parser stores as hex) reached the cloud metadata endpoint; now decoded
+  and blocked, with regression tests.
+- The green `sourced_supported` badge now requires *every* claim to be checked and
+  supported — an uncited/unverifiable claim downgrades to `partially_supported`.
+- Per-claim labels are human-readable ("No source cited" vs raw `no_source`); the
+  post-run cost is shown as a measured "cost $X" distinct from the pre-run "~estimate".
+- Broadened injection defang (positive-framed/newline-split/fake-authority) and added
+  adversarial cases to the eval so injection resistance is measured, not just asserted.
+- Added tests for the credential-omitted, pre/post-redirect SSRF-blocked source fetch.
+
 ### Project health
 - GitHub Actions CI (type-check + test + chrome/firefox build) on PRs.
 - Per-surface selector fixtures guard against selector rot; a pipeline contract test
