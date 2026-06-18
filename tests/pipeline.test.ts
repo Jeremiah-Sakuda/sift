@@ -43,6 +43,16 @@ describe('aggregateVerdict precedence', () => {
     );
   });
 
+  it('does NOT go green when a claim is uncited/unverifiable', () => {
+    // One supported claim + one with no source must not earn the clean green badge.
+    expect(aggregateVerdict([cite('ok')], [assess('supported'), assess('no_source')])).toBe(
+      'partially_supported',
+    );
+    expect(aggregateVerdict([cite('ok')], [assess('supported'), assess('unverifiable')])).toBe(
+      'partially_supported',
+    );
+  });
+
   it('refuses (unverifiable) when nothing could be checked', () => {
     expect(aggregateVerdict([], [assess('no_source')])).toBe('unverifiable');
     expect(aggregateVerdict([cite('unreachable')], [assess('unverifiable')])).toBe('unverifiable');

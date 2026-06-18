@@ -81,7 +81,8 @@ describe('verify pipeline cite-N indexing contract', () => {
       for (const cid of claim.citationIds) expect(ids.has(cid)).toBe(true);
     }
 
-    // Two claims are supported by live sources, one has no citation → sourced & supported.
-    expect(result.verdict).toBe('sourced_supported');
+    // Two claims are supported by live sources, but Claim C is uncited — so the
+    // answer is partially (not fully) supported: green is reserved for all-checked.
+    expect(result.verdict).toBe('partially_supported');
   });
 });

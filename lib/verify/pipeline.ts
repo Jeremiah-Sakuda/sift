@@ -170,8 +170,10 @@ async function fetchCitations(
  * Honesty rules (panel feedback): a single dead link does NOT condemn an
  * otherwise well-sourced answer — `fabricated_citations` requires a claim whose
  * *every* cited source is a dead link (i.e. backed only by nonexistent pages).
- * And `partial` is NOT counted as `supported`: a mix surfaces as
- * `partially_supported`, never a clean green badge.
+ * `partial` is NOT counted as `supported`. And the clean green `sourced_supported`
+ * is reserved for answers where EVERY extracted claim was actually verified —
+ * an uncited or unverifiable claim downgrades the answer to `partially_supported`,
+ * so "green" never hides a claim that went unchecked.
  */
 export function aggregateVerdict(
   citations: Citation[],
@@ -187,11 +189,13 @@ export function aggregateVerdict(
 
   if (assessments.some((a) => a.support === 'unsupported')) return 'unsupported_claims';
 
+  const total = assessments.length;
   const supported = assessments.filter((a) => a.support === 'supported').length;
-  const partial = assessments.filter((a) => a.support === 'partial').length;
+  const anyBacked = assessments.some((a) => a.support === 'supported' || a.support === 'partial');
 
-  if (supported > 0 && partial === 0) return 'sourced_supported';
-  if (supported > 0 || partial > 0) return 'partially_supported';
+  // Green only when every claim was checked and fully supported.
+  if (total > 0 && supported === total) return 'sourced_supported';
+  if (anyBacked) return 'partially_supported';
   return 'unverifiable';
 }
 
