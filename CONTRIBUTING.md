@@ -58,6 +58,19 @@ document.querySelectorAll('your-selector-here')
 
 It should return exactly the AI container(s), and nothing on pages without the surface.
 
+## Verify accuracy eval
+
+The entailment judge has a labeled eval in [`eval/`](eval/). The scoring logic is
+unit-tested offline; the live model run is gated so ordinary `npm test` never hits
+the network. To measure accuracy and the (critical) false-supported rate:
+
+```bash
+ANTHROPIC_API_KEY=sk-... npm run eval
+```
+
+It prints a confusion matrix and asserts loose guardrails. When you find a
+real-world miss, add the case to [`eval/entailment-cases.ts`](eval/entailment-cases.ts).
+
 ## Code style
 
 - TypeScript, `strict`. Keep `npm run compile` and `npm test` green.

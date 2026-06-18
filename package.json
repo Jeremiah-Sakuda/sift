@@ -21,6 +21,7 @@
     "compile": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "eval": "RUN_ENTAILMENT_EVAL=1 vitest run tests/eval",
     "icons": "node scripts/gen-icons.mjs",
     "postinstall": "wxt prepare"
   },
