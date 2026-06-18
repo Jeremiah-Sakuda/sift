@@ -3,6 +3,7 @@ import {
   hostMatches,
   surfaceMatchesUrl,
   surfacesForUrl,
+  surfaceIsUniversal,
   findSurfaceElements,
   findCitations,
   extractAnswerText,
@@ -32,6 +33,22 @@ describe('surfaceMatchesUrl / surfacesForUrl', () => {
     expect(ids).toContain('openai-chatkit');
     // google surfaces should not apply to perplexity
     expect(ids).not.toContain('google-ai-overview');
+  });
+});
+
+describe('surfaceIsUniversal', () => {
+  const list = BUNDLED_SELECTOR_LIST;
+  it('flags the all-sites widget as universal and host-specific surfaces as not', () => {
+    const chatkit = list.surfaces.find((s) => s.id === 'openai-chatkit')!;
+    const perplexity = list.surfaces.find((s) => s.id === 'perplexity-answer')!;
+    expect(surfaceIsUniversal(chatkit)).toBe(true);
+    expect(surfaceIsUniversal(perplexity)).toBe(false);
+  });
+
+  it('an arbitrary site matches only the universal surface', () => {
+    const matched = surfacesForUrl(list, 'https://example.com/some/page');
+    expect(matched.length).toBeGreaterThan(0);
+    expect(matched.every(surfaceIsUniversal)).toBe(true);
   });
 });
 

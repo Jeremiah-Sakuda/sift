@@ -37,6 +37,15 @@ export function surfacesForUrl(list: SelectorList, url: string): Surface[] {
 }
 
 /**
+ * A "universal" surface matches every host (e.g. the embeddable OpenAI ChatKit
+ * widget, matches: ['*']). These can appear anywhere, so they don't justify a
+ * permanent observer on every page — host-specific surfaces (the AI SPAs) do.
+ */
+export function surfaceIsUniversal(surface: Surface): boolean {
+  return surface.matches.includes('*');
+}
+
+/**
  * Find the elements for a surface on the page. Tries selectors in order and
  * returns the matches from the FIRST selector that hits — avoids double-tagging
  * the same surface via overlapping fallback selectors.
