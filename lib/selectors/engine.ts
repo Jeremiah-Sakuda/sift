@@ -5,6 +5,7 @@
  * Pure DOM/string logic, no extension APIs, so it is unit-testable in jsdom.
  */
 
+import { isPublicHttpUrl } from '../net';
 import type { Surface, SelectorList } from '../types';
 
 /** Host glob match: `*` (any), `example.com` (exact), `*.example.com` (domain + subdomains). */
@@ -103,7 +104,8 @@ export function normalizeCitationUrl(href: string): string | null {
   if (href.trim().startsWith('#')) return null;
   try {
     const url = new URL(href, location.href);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    // Reject non-http(s) and internal/loopback/private targets (SSRF guard).
+    if (!isPublicHttpUrl(url)) return null;
     url.hash = '';
     return url.toString();
   } catch {

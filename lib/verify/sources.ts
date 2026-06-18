@@ -11,6 +11,7 @@
  */
 
 import { MAX_SOURCE_CHARS } from '../config';
+import { isBlockedHost, isPublicHttpUrl } from '../net';
 import type { Citation, CitationStatus } from '../types';
 
 export interface FetchedSource {
@@ -27,6 +28,17 @@ export async function fetchCitation(
   timeoutMs: number,
   maxChars: number = MAX_SOURCE_CHARS,
 ): Promise<FetchedSource> {
+  // SSRF guard: refuse internal/loopback/private targets before touching the network.
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { citation: { id, url, title, status: 'unreachable' } };
+  }
+  if (!isPublicHttpUrl(parsed)) {
+    return { citation: { id, url, title, status: 'unreachable' } };
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -38,6 +50,11 @@ export async function fetchCitation(
       credentials: 'omit',
       headers: { accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8' },
     });
+
+    // A public URL can redirect into an internal host; never read that body.
+    if (res.url && isInternalUrl(res.url)) {
+      return { citation: { id, url, title, status: 'unreachable' } };
+    }
 
     const base: Citation = { id, url, title, status: classifyStatus(res.status), httpStatus: res.status };
     if (base.status !== 'ok') return { citation: base };
@@ -58,6 +75,14 @@ export async function fetchCitation(
     };
   } finally {
     clearTimeout(timer);
+  }
+}
+
+function isInternalUrl(u: string): boolean {
+  try {
+    return isBlockedHost(new URL(u).hostname);
+  } catch {
+    return true;
   }
 }
 
