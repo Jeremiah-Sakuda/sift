@@ -89,7 +89,8 @@ npm run compile     # type-check (tsc --noEmit)
 ```
 
 To load a production build manually: `chrome://extensions` → enable **Developer mode** →
-**Load unpacked** → select `.output/chrome-mv3`.
+**Load unpacked** → select `.output/chrome-mv3`. Publishing to the Chrome Web Store is
+documented in [docs/STORE.md](docs/STORE.md).
 
 ### Using Verify
 
