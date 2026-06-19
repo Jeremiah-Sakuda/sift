@@ -27,8 +27,8 @@
 import type { SelectorList } from '../types';
 
 export const BUNDLED_SELECTOR_LIST: SelectorList = {
-  version: 1,
-  updatedAt: '2026-06-07',
+  version: 2,
+  updatedAt: '2026-06-18',
   source: 'bundled',
   surfaces: [
     {
@@ -39,30 +39,36 @@ export const BUNDLED_SELECTOR_LIST: SelectorList = {
       matches: ['google.com', '*.google.com'],
       selectors: [
         {
-          css: '#rcnt div[data-mcpr]:has(div[data-async-type="folsrch"])',
-          description: 'Desktop AI Overview container, gated on the folsrch async block.',
+          css: '#rcnt div[data-mcpr]:has(div[data-async-type="folsrch"], [aria-label*="AI Overview" i])',
+          description:
+            'Desktop AI Overview block: a modular (data-mcpr) container that holds either the folsrch async block (older cohorts) or an "AI Overview" labelled control. The engine keeps the OUTERMOST match, which is the full overview container. Verified live 2026-06.',
+          confidence: 'high',
+        },
+        {
+          css: 'div[data-mcpr][data-mcp]:has([aria-label*="AI Overview" i])',
+          description: 'AI Overview content container (data-mcpr+data-mcp) gated on the AI-Overview label.',
           confidence: 'high',
         },
         {
           css: 'div:has(> a[href^="https://support.google.com/websearch?p=ai_overviews"])',
-          description: 'Container holding the "About AI Overviews" info link — very stable.',
-          confidence: 'high',
+          description: 'Container holding the "About AI Overviews" info link (present in some cohorts).',
+          confidence: 'medium',
         },
         {
-          css: 'h1 + div[data-async-context] > div:first-child:not(:only-child):has([data-async-type="folsrch"])',
+          css: 'h1 + div[data-async-context] > div:first-child:not(:only-child):has([data-async-type="folsrch"], [aria-label*="AI Overview" i])',
           description: 'Mobile AI Overview, anchored on the off-screen a11y heading.',
           confidence: 'medium',
         },
         {
-          css: '[data-attrid="AIOverview"], [aria-label="AI Overview"], [data-async-type="aiOverview"]',
-          description: 'Semantic fallbacks; present only in some cohorts.',
+          css: '[data-attrid="AIOverview"], [data-async-type="aiOverview"]',
+          description: 'Semantic data-attr fallbacks; present only in some cohorts.',
           confidence: 'low',
         },
       ],
       citationSelector:
         'a[href^="http"]:not([href*="google.com"]):not([href*="gstatic.com"]):not([href*="googleusercontent.com"])',
       notes:
-        'Trigger with a query like ?q=how+many+pickles. Re-verify: document.querySelectorAll(\'[data-async-type="folsrch"]\').length, then .closest(\'[data-mcpr]\'). Google obfuscates classes heavily; rely on data-* and the support-link href.',
+        'Trigger with a query like ?q=how+many+bones+are+in+the+human+body. CRITICAL: data-mcpr containers are reused by many Google modules, so ALWAYS gate with :has(folsrch | AI-Overview label) — never match data-mcpr alone. The "AI Overview" aria-label sits on the "Show more AI Overview" BUTTON, not the container, so use it only as a :has() gate and let the engine return the outermost data-mcpr ancestor. Re-verify: document.querySelectorAll(\'#rcnt div[data-mcpr]:has([aria-label*="AI Overview" i])\') then check the first organic result is OUTSIDE it. Verified live 2026-06.',
     },
     {
       id: 'google-ai-mode',
