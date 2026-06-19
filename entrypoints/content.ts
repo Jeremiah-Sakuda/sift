@@ -7,7 +7,10 @@ import { SiftController } from '@/lib/content/controller';
  */
 export default defineContentScript({
   matches: ['<all_urls>'],
-  runAt: 'document_idle',
+  // document_start so Block can inject a hiding CSS rule before the AI surface
+  // ever paints (no flash-of-unblocked-content). Detection/Tag still work once
+  // the surface appears via the MutationObserver.
+  runAt: 'document_start',
   main() {
     const controller = new SiftController();
     void controller.start();

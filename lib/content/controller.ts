@@ -43,6 +43,7 @@ export class SiftController {
   private observer?: MutationObserver;
   private rescanTimer?: ReturnType<typeof setTimeout>;
   private panel?: VerifyPanel;
+  private blockStyle?: HTMLStyleElement;
   private activeVerifyHash?: string;
   private activeVerifySurface?: Surface;
   private started = false;
@@ -60,6 +61,9 @@ export class SiftController {
     const matched = surfacesForUrl(this.list, location.href);
     if (matched.length === 0) return;
 
+    // Hide-before-paint: at document_start, inject the block CSS first so a
+    // blocked surface never flashes on screen.
+    this.applyBlockCss();
     injectBaseStyles();
     this.listenForChanges();
     this.listenForProgress();
@@ -127,6 +131,11 @@ export class SiftController {
       this.reconcile();
       return;
     }
+    if (this.level === 'block') {
+      // Hiding is done by injected CSS (flash-free); no per-element work needed.
+      this.applyBlockCss();
+      return;
+    }
     for (const surface of surfacesForUrl(this.list, location.href)) {
       for (const el of findSurfaceElements(surface)) {
         this.applyToElement(el, surface);
@@ -139,14 +148,47 @@ export class SiftController {
     if (this.level === 'off') {
       for (const [el, state] of this.states) this.clearElement(el, state);
       this.states.clear();
+      this.applyBlockCss(); // removes the block stylesheet
       this.panel?.hide();
       return;
     }
+    if (this.level === 'block') {
+      // Drop any tag badges/outlines from a previous level, then CSS-hide.
+      for (const [el, state] of this.states) this.clearElement(el, state);
+      this.states.clear();
+      this.applyBlockCss();
+      return;
+    }
+    // tag / verify: ensure the block stylesheet is gone, then (re)apply markers.
+    this.applyBlockCss();
     for (const [el, state] of this.states) {
       if (state.dismissed) continue;
       this.applyToElement(el, state.surface);
     }
     this.scan();
+  }
+
+  /**
+   * Hide-before-paint for Block: inject a stylesheet whose rules are this host's
+   * surface selectors set to display:none. CSS applies reactively, so when the
+   * site later injects the AI surface it never paints. Removed for other levels.
+   */
+  private applyBlockCss(): void {
+    if (this.level === 'block') {
+      const selectors = surfacesForUrl(this.list, location.href)
+        .flatMap((s) => s.selectors.map((sel) => sel.css))
+        .filter(Boolean);
+      if (!selectors.length) return;
+      if (!this.blockStyle) {
+        this.blockStyle = document.createElement('style');
+        this.blockStyle.setAttribute(`${SIFT_ATTR}-block-css`, '');
+        (document.head ?? document.documentElement).appendChild(this.blockStyle);
+      }
+      this.blockStyle.textContent = `${selectors.join(',\n')} { display: none !important; }`;
+    } else if (this.blockStyle) {
+      this.blockStyle.remove();
+      this.blockStyle = undefined;
+    }
   }
 
   private applyToElement(el: Element, surface: Surface): void {
